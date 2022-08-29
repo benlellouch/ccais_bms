@@ -21,7 +21,7 @@ from ..util.logger import Logger
 from ..util.time import (get_hours_to_now, get_time_string, get_delta_seconds, 
                          WEEKDAY_ENCODING)
 
-YEAR = 1991 # Non leap year
+YEAR = 2017 # Non leap year
 CWD = os.getcwd();
 LOG_LEVEL_MAIN = 'INFO';
 LOG_LEVEL_EPLS = 'ERROR';

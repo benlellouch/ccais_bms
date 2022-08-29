@@ -233,8 +233,13 @@ class PPO():
 
     def Cost_function(self, cur_time):
         diag = torch.zeros(self.T, self.n_state+self.n_ctrl)
+        print("DIAG: ", diag)
+        print("Current TIME: ", cur_time)
         occupied = self.dist["Occupancy Flag"][cur_time : cur_time + pd.Timedelta(seconds = (self.T-1) * self.step)]  # T
+        print("OCCUPIED: ", occupied)
+        print("ETA BEFORE UNSQUEEZE: ", torch.tensor([self.eta[int(flag)] for flag in occupied]))
         eta_w_flag = torch.tensor([self.eta[int(flag)] for flag in occupied]).unsqueeze(1).double() # Tx1
+        print("ETA FLAG: ", eta_w_flag)
         diag[:, :self.n_state] = eta_w_flag
         diag[:, self.n_state:] = 1e-6
         
@@ -287,11 +292,11 @@ def main():
     env = gym.make('5Zone-control_TMY3-v0')
 
     # Modify here: Outputs from EnergyPlus; Match the variables.cfg file.
-    obs_name = ["Outdoor Temp.", "Outdoor RH", "Wind Speed", "Wind Direction", "Diff. Solar Rad.", "Direct Solar Rad.", "Htg SP", "Clg SP", "Indoor Temp.", "Indoor Temp. Setpoint", "PPD", "Occupancy Flag", "Coil Power", "HVAC Power", "Sys In Temp.", "Sys In Mdot", "OA Temp.", "OA Mdot", "MA Temp.", "MA Mdot", "Sys Out Temp.", "Sys Out Mdot"]
+    obs_name = ["Outdoor Temp.", "Outdoor RH", "Wind Speed", "Wind Direction", "Diff. Solar Rad.", "Direct Solar Rad.", "Htg SP", "Clg SP", "Indoor Temp.", "Indoor Temp. Setpoint", "PPD", "Occupancy Flag", "Coil Power","Building Total Occupants", "HVAC Power", "Sys In Temp.", "Sys In Mdot", "OA Temp.", "OA Mdot", "MA Temp.", "MA Mdot", "Sys Out Temp.", "Sys Out Mdot"]
 
     # Modify here: Change based on the specific control problem
     state_name = ["Indoor Temp."]
-    dist_name = ["Outdoor Temp.", "Outdoor RH", "Wind Speed", "Wind Direction", "Diff. Solar Rad.", "Direct Solar Rad.", "Occupancy Flag"]
+    dist_name = ["Outdoor Temp.", "Outdoor RH", "Wind Speed", "Wind Direction", "Diff. Solar Rad.", "Direct Solar Rad.", "Occupancy Flag", "Building Total Occupants"]
     ctrl_name = ["SA Temp Setpoint"]
     target_name = ["Indoor Temp. Setpoint"]
     
@@ -308,9 +313,13 @@ def main():
 
     # Read Information on Weather, Occupancy, and Target Setpoint
     obs = pd.read_pickle("results/Dist-TMY3.pkl")
+
     target = obs[target_name]
     disturbance = obs[dist_name]
-    
+    print("Total Occupants: ", obs["Building Total Occupants"].sum())
+    print("Occupancy Flag: ", obs["Occupancy Flag"].sum())
+    print("Mean PPD: ", obs["PPD"].sum())
+    print("Keys: ", obs.keys())
     # Min-Max Normalization
     disturbance = (disturbance - disturbance.min())/(disturbance.max() - disturbance.min())
 
@@ -413,9 +422,11 @@ def main():
             batch_set = Dataset(batch_states, batch_actions, b_next_states, batch_dist, batch_rewards, batch_old_logprobs, batch_CC, batch_cc)
             batch_loader = data.DataLoader(batch_set, batch_size=48, shuffle=True, num_workers=2)
             agent.update_parameters(batch_loader, sigma)
-        
-        perf.append([np.mean(real_rewards), np.std(real_rewards)])
-        print("{}, reward: {}".format(cur_time, np.mean(real_rewards)))
+
+        mean = torch.mean(torch.stack(real_rewards))
+        std = torch.std(torch.stack(real_rewards))
+        perf.append([mean, std])
+        #print("{}, reward: {}".format(cur_time, np.mean(real_rewards)))
 
         save_name = args.save_name
         obs_df = pd.DataFrame(np.array(observations), index = np.array(timeStamp), columns = obs_name)
