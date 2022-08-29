@@ -2832,7 +2832,7 @@ SizingPeriod:DesignDay,
     EndOfZoneTimestepAfterZoneReporting,  !- EnergyPlus Model Calling Point
     CalcMeanTemp,         !- Program Name 1
     CalcMeanPPD;             !- Program Name 2
-
+    CalcNumOccupant;
 
    EnergyManagementSystem:ProgramCallingManager,
     test_calls,       !- Name
